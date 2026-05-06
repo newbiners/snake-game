@@ -2,6 +2,7 @@ use ggez::event::EventHandler;
 use ggez::graphics::{self, Canvas, Color, DrawParam, Mesh, PxScale, Text, TextFragment};
 use ggez::{Context, GameResult};
 
+use crate::assets::Assets;
 use crate::food::Food;
 use crate::snake::Snake;
 use crate::wall::Wall;
@@ -9,22 +10,23 @@ use crate::wall::Wall;
 pub struct GameState {
     snake: Snake,
     food: Food,
+    assets: Assets,
     wall: Wall,
     game_over: bool,
     score: u32,
 }
 
 impl GameState {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(ctx: &mut Context) -> GameResult<Self> {
+        Ok(Self {
+            assets: Assets::new(ctx)?,
             snake: Snake::new(),
             food: Food::new(),
             wall: Wall::new(),
             game_over: false,
             score: 0,
-        }
+        })
     }
-
     fn restart(&mut self) {
         self.snake = Snake::new();
         self.food = Food::new();
@@ -55,9 +57,7 @@ impl EventHandler for GameState {
         }
 
         // Game over: ular menabrak dirinya sendiri atau tembok
-        if self.snake.collides_with_self()
-            || self.wall.collides_with(self.snake.head_position())
-        {
+        if self.snake.collides_with_self() || self.wall.collides_with(self.snake.head_position()) {
             self.game_over = true;
         }
 
@@ -108,8 +108,8 @@ impl EventHandler for GameState {
         let mut canvas = Canvas::from_frame(ctx, Color::BLACK);
 
         self.wall.draw(&mut canvas, ctx)?;
-        self.snake.draw(&mut canvas, ctx)?;
-        self.food.draw(&mut canvas, ctx)?;
+        self.snake.draw(&mut canvas, &self.assets)?;
+        self.food.draw(&mut canvas, &self.assets)?;
 
         // Tampilkan skor di pojok kiri atas
         let score_text = Text::new(TextFragment {

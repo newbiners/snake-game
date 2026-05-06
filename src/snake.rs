@@ -1,4 +1,4 @@
-use ggez::{Context, GameResult};
+use ggez::GameResult;
 
 pub struct Snake {
     pub body: Vec<(i32, i32)>,
@@ -64,19 +64,64 @@ impl Snake {
         self.body.push(tail);
     }
 
-    pub fn draw(&self, canvas: &mut ggez::graphics::Canvas, ctx: &ggez::Context) -> GameResult {
+    pub fn draw(
+        &self,
+        canvas: &mut ggez::graphics::Canvas,
+        assets: &crate::assets::Assets,
+    ) -> GameResult {
         use crate::utils::grid_to_pixel;
-        use ggez::graphics::{self, Color, DrawParam, Mesh};
+        use ggez::graphics::DrawParam;
 
-        for &segment in &self.body {
+        for (i, &segment) in self.body.iter().enumerate() {
             let pos = grid_to_pixel(segment);
-            let mesh = Mesh::new_rectangle(
-                ctx,
-                graphics::DrawMode::fill(),
-                graphics::Rect::new(pos.0, pos.1, 20.0, 20.0),
-                Color::GREEN,
-            )?;
-            canvas.draw(&mesh, DrawParam::default());
+            let img = if i == 0 {
+                // Head
+                match self.direction {
+                    (0, -1) => &assets.head_up,
+                    (0, 1) => &assets.head_down,
+                    (-1, 0) => &assets.head_left,
+                    (1, 0) => &assets.head_right,
+                    _ => &assets.head_up,
+                }
+            } else if i == self.body.len() - 1 {
+                // Tail
+                let prev = self.body[i - 1];
+                let dir = (segment.0 - prev.0, segment.1 - prev.1);
+                match dir {
+                    (0, 1) => &assets.tail_down,
+                    (0, -1) => &assets.tail_up,
+                    (1, 0) => &assets.tail_right,
+                    (-1, 0) => &assets.tail_left,
+                    _ => &assets.tail_down,
+                }
+            } else {
+                // Body
+                let prev = self.body[i - 1];
+                let next = self.body[i + 1];
+
+                let d1 = (prev.0 - segment.0, prev.1 - segment.1);
+                let d2 = (next.0 - segment.0, next.1 - segment.1);
+
+                if d1.0 == d2.0 {
+                    &assets.body_vert
+                } else if d1.1 == d2.1 {
+                    &assets.body_horz
+                } else {
+                    // Corners
+                    match (d1, d2) {
+                        ((1, 0), (0, 1)) | ((0, 1), (1, 0)) => &assets.body_br,
+                        ((-1, 0), (0, 1)) | ((0, 1), (-1, 0)) => &assets.body_bl,
+                        ((1, 0), (0, -1)) | ((0, -1), (1, 0)) => &assets.body_tr,
+                        ((-1, 0), (0, -1)) | ((0, -1), (-1, 0)) => &assets.body_tl,
+                        _ => &assets.body_horz,
+                    }
+                }
+            };
+
+            canvas.draw(
+                img,
+                DrawParam::default().dest([pos.0, pos.1]).scale([0.5, 0.5]),
+            );
         }
         Ok(())
     }
